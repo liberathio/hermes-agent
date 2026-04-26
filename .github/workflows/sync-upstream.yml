@@ -10,8 +10,14 @@ name: Sync from upstream
 #     - Contents: read & write
 #     - Pull requests: read & write
 #     - Workflows: read & write
-#   Store it as the repository secret `SYNC_TOKEN`. The workflow falls back to
-#   GITHUB_TOKEN and posts an actionable issue if SYNC_TOKEN is missing.
+#
+#   Source of truth is 1Password (vault `Personal`, item
+#   `GitHub PAT — hermes-agent SYNC_TOKEN`). To rotate the secret, run:
+#     ./scripts/ops/rotate-sync-token.sh
+#   That script reads the PAT from 1Password and writes it to the GitHub
+#   Actions secret `SYNC_TOKEN`. Never paste the PAT in plaintext on disk
+#   or in CI logs. The workflow falls back to GITHUB_TOKEN and posts an
+#   actionable issue if SYNC_TOKEN is missing.
 
 on:
   schedule:
