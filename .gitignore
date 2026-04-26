@@ -62,3 +62,8 @@ mini-swe-agent/
 .direnv/
 result
 website/static/api/skills-index.json
+
+# Local agent / IDE assistant state
+.claude/
+.cursor/
+.aider*
