@@ -29,6 +29,11 @@ jobs:
   scan:
     name: Scan PR for critical supply chain risks
     runs-on: ubuntu-latest
+    # Upstream-sync PRs replay vendored upstream code (legitimate setup.py,
+    # sitecustomize.py, etc.) and predictably trip the install-hook detector.
+    # Skip the scan for those branches — the fork's main still gets scanned on
+    # every non-sync PR, which is where novel attack vectors would land.
+    if: ${{ !startsWith(github.event.pull_request.head.ref, 'upstream-sync/') }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
