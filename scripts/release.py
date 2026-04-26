@@ -515,6 +515,23 @@ AUTHOR_MAP = {
     "chenzeshi@live.com": "chen1749144759",
     "mor.aleksandr@yahoo.com": "MorAlekss",
     "ash@users.noreply.github.com": "ash",
+    # Backfilled during liberathio fork upstream sync (PR #1).
+    "thio@Mac-mini-de-Liberathio.local": "liberathio",
+    "liberathio@users.noreply.github.com": "liberathio",
+    "AllardQuek@users.noreply.github.com": "AllardQuek",
+    "Bartok9@users.noreply.github.com": "Bartok9",
+    "codezhujr@gmail.com": "Zjianru",
+    "corazzione@users.noreply.github.com": "corazzione",
+    "entropidelic@users.noreply.github.com": "entropidelic",
+    "focusflow.app.help@gmail.com": "focusflow-dev",
+    "jinzheng8115@users.noreply.github.com": "jinzheng8115",
+    "luyao618@users.noreply.github.com": "luyao618",
+    "my.vesper.nine@gmail.com": "vesper",
+    "plgonzalezrx8@users.noreply.github.com": "plgonzalezrx8",
+    "tekgnosis-net@users.noreply.github.com": "tekgnosis-net",
+    "trevthefoolish@users.noreply.github.com": "trevthefoolish",
+    "web3blind@gmail.com": "web3blind",
+    "yeyitech@users.noreply.github.com": "yeyitech",
 }
 
 
