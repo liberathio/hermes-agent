@@ -38,14 +38,18 @@ if ! command -v gh >/dev/null; then
   exit 1
 fi
 
-if ! op whoami >/dev/null 2>&1; then
-  echo "error: 1Password CLI not signed in — open the 1Password desktop app and authenticate" >&2
-  exit 1
-fi
+# Note: we don't gate on `op whoami` — with the macOS desktop integration
+# (Touch ID / app authentication), `op whoami` returns "not signed in"
+# even when `op item get` works fine via biometrics. We rely on the actual
+# `op item get` call below to surface auth errors.
 
 token="$(op item get "${OP_ITEM}" --vault "${OP_VAULT}" --reveal --fields credential 2>/dev/null || true)"
-if [ -z "${token}" ] || [ "${token}" = "placeholder-rotate-me" ]; then
-  echo "error: ${OP_ITEM} has no real credential set — paste the PAT into 1Password first" >&2
+if [ -z "${token}" ]; then
+  echo "error: could not read ${OP_ITEM} from 1Password — make sure the desktop app is unlocked and CLI integration is enabled (Settings → Developer)" >&2
+  exit 1
+fi
+if [ "${token}" = "placeholder-rotate-me" ]; then
+  echo "error: ${OP_ITEM} still has the placeholder credential — paste the real PAT into 1Password first" >&2
   exit 1
 fi
 
