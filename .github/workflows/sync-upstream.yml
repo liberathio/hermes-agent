@@ -2,6 +2,16 @@ name: Sync from upstream
 
 # Keeps liberathio/hermes-agent aligned with NousResearch/hermes-agent.
 # Opens a PR rather than pushing directly, so CI runs before the sync lands on main.
+#
+# REQUIRED SECRET: SYNC_TOKEN
+#   GITHUB_TOKEN does not have the `workflow` OAuth scope, so it cannot create
+#   or update branches that touch `.github/workflows/*`. Almost every upstream
+#   sync will touch workflow files, so we need a fine-grained PAT with:
+#     - Contents: read & write
+#     - Pull requests: read & write
+#     - Workflows: read & write
+#   Store it as the repository secret `SYNC_TOKEN`. The workflow falls back to
+#   GITHUB_TOKEN and posts an actionable issue if SYNC_TOKEN is missing.
 
 on:
   schedule:
@@ -17,6 +27,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 concurrency:
   group: sync-upstream
@@ -27,11 +38,25 @@ jobs:
     name: Sync fork with NousResearch/hermes-agent
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve token
+        id: token
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          if [ -n "${SYNC_TOKEN}" ]; then
+            echo "has_pat=true"  >> "$GITHUB_OUTPUT"
+            echo "Using SYNC_TOKEN PAT for git operations."
+          else
+            echo "has_pat=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SYNC_TOKEN secret is missing. Falling back to GITHUB_TOKEN; pushes that touch .github/workflows/* will fail."
+          fi
+
       - name: Checkout fork
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Configure git identity
         run: |
@@ -55,8 +80,8 @@ jobs:
           BEHIND=$(git rev-list --count "origin/main..upstream/${UPSTREAM_REF}")
           AHEAD=$(git rev-list --count "upstream/${UPSTREAM_REF}..origin/main")
           UPSTREAM_SHA=$(git rev-parse "upstream/${UPSTREAM_REF}")
-          echo "behind=${BEHIND}"        >> "$GITHUB_OUTPUT"
-          echo "ahead=${AHEAD}"          >> "$GITHUB_OUTPUT"
+          echo "behind=${BEHIND}"             >> "$GITHUB_OUTPUT"
+          echo "ahead=${AHEAD}"               >> "$GITHUB_OUTPUT"
           echo "upstream_sha=${UPSTREAM_SHA}" >> "$GITHUB_OUTPUT"
           echo "Behind upstream by ${BEHIND} commits, ahead by ${AHEAD}."
 
@@ -74,19 +99,26 @@ jobs:
           BRANCH="upstream-sync/$(date -u +%Y%m%d-%H%M)-${UPSTREAM_SHA:0:7}"
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
-          # Reuse existing branch if a previous run already pushed the same upstream SHA.
           if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
             echo "Sync branch ${BRANCH} already exists on origin — reusing."
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           git checkout -B "${BRANCH}" "${UPSTREAM_SHA}"
-          git push origin "${BRANCH}"
+
+          if git push origin "${BRANCH}"; then
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Failed to push sync branch. If the error mentions 'workflows permission', add a SYNC_TOKEN PAT (see workflow header)."
+            exit 1
+          fi
 
       - name: Open / update sync PR
-        if: steps.drift.outputs.behind != '0'
+        if: steps.drift.outputs.behind != '0' && steps.push.outputs.pushed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
           BRANCH: ${{ steps.push.outputs.branch }}
           BEHIND: ${{ steps.drift.outputs.behind }}
           AHEAD: ${{ steps.drift.outputs.ahead }}
@@ -123,3 +155,44 @@ jobs:
             --head "${BRANCH}" \
             --title "chore(sync): pull upstream NousResearch/hermes-agent@${UPSTREAM_REF}" \
             --body "${BODY}"
+
+      - name: Open tracking issue when SYNC_TOKEN is missing
+        if: failure() && steps.token.outputs.has_pat == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BEHIND: ${{ steps.drift.outputs.behind }}
+          UPSTREAM_SHA: ${{ steps.drift.outputs.upstream_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          TITLE="Upstream sync blocked: SYNC_TOKEN secret missing"
+
+          if gh issue list --search "${TITLE} in:title" --state open --json number --jq 'length' | grep -qv '^0$'; then
+            echo "Tracking issue already open."
+            exit 0
+          fi
+
+          gh issue create \
+            --title "${TITLE}" \
+            --label "upstream-sync,needs-config" \
+            --body "$(cat <<EOF
+          The \`Sync from upstream\` workflow cannot push because no \`SYNC_TOKEN\` secret is configured.
+
+          - Behind upstream by **${BEHIND:-?}** commits (target HEAD: \`${UPSTREAM_SHA:-unknown}\`).
+          - Failed run: ${RUN_URL}
+
+          ### How to fix
+
+          Create a fine-grained Personal Access Token with the following permissions on \`liberathio/hermes-agent\`:
+          - **Contents:** read & write
+          - **Pull requests:** read & write
+          - **Workflows:** read & write
+
+          Add it as the repository secret \`SYNC_TOKEN\` (Settings → Secrets and variables → Actions). Then re-run the failed workflow.
+
+          ### Why GITHUB_TOKEN is not enough
+
+          \`GITHUB_TOKEN\` lacks the \`workflow\` OAuth scope, so it cannot create or update branches that touch \`.github/workflows/*\`. Almost every upstream sync touches at least one workflow file, so the push is rejected.
+          EOF
+          )"
