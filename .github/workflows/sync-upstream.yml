@@ -126,7 +126,15 @@ jobs:
       - name: Open / update sync PR
         if: steps.drift.outputs.behind != '0' && steps.push.outputs.pushed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          # Use GITHUB_TOKEN for PR creation: the branch push above already
+          # used SYNC_TOKEN (only that PAT can write workflow files), but
+          # `gh pr create` only needs `pull_requests: write`, which the
+          # default GITHUB_TOKEN already has via the workflow `permissions:`
+          # block at the top. Some fine-grained PATs return "Resource not
+          # accessible by personal access token (createPullRequest)" even
+          # with pull-requests:write enabled — using GITHUB_TOKEN sidesteps
+          # that whole class of failure.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ steps.push.outputs.branch }}
           BEHIND: ${{ steps.drift.outputs.behind }}
           AHEAD: ${{ steps.drift.outputs.ahead }}
@@ -152,12 +160,9 @@ jobs:
           EOF
           )
 
-          gh pr create \
-            --base main \
-            --head "${BRANCH}" \
-            --title "chore(sync): pull upstream NousResearch/hermes-agent@${UPSTREAM_REF}" \
-            --body "${BODY}" \
-            --label "upstream-sync" || \
+          # Skip --label: the upstream-sync label doesn't exist in this fork
+          # and creating it requires extra REST calls. The PR title and body
+          # already make the purpose obvious.
           gh pr create \
             --base main \
             --head "${BRANCH}" \
