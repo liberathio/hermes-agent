@@ -143,7 +143,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          if gh pr view "${BRANCH}" --json number >/dev/null 2>&1; then
+          if gh pr view --repo "${GITHUB_REPOSITORY}" "${BRANCH}" --json number >/dev/null 2>&1; then
             echo "PR for ${BRANCH} already exists — leaving as is."
             exit 0
           fi
@@ -160,10 +160,17 @@ jobs:
           EOF
           )
 
-          # Skip --label: the upstream-sync label doesn't exist in this fork
-          # and creating it requires extra REST calls. The PR title and body
-          # already make the purpose obvious.
+          # --repo is critical: `gh pr create` on a fork defaults to opening
+          # the PR against the parent (NousResearch/hermes-agent), not within
+          # this fork. That's the actual cause of every "Resource not
+          # accessible by ..." error in this workflow's history — neither
+          # SYNC_TOKEN nor GITHUB_TOKEN has rights to file PRs against the
+          # upstream. Pinning the target repo forces the within-fork flow.
+          #
+          # --label "upstream-sync" intentionally omitted: the label doesn't
+          # exist in this fork and creating it on the fly adds noise.
           gh pr create \
+            --repo "${GITHUB_REPOSITORY}" \
             --base main \
             --head "${BRANCH}" \
             --title "chore(sync): pull upstream NousResearch/hermes-agent@${UPSTREAM_REF}" \
