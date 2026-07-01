@@ -1723,6 +1723,17 @@ AUTHOR_MAP = {
     "steveonjava@gmail.com": "steveonjava",  # PR #29669 (redact secrets in kanban tool payloads)
     "afnlegion01@gmail.com": "Afnath-max",  # PR #49129 salvage (opencode-zen catalog refresh + uncapped/live-first picker)
     "sharma.priyanshu96@gmail.com": "ipriyaaanshu",  # PR #51488 salvage (clear stale base_url on gateway model switches; #25107)
+    # liberathio fork — local machine + noreply commits
+    "thio@Mac-mini-de-Liberathio.local": "liberathio",
+    "liberathio@users.noreply.github.com": "liberathio",
+    "AllardQuek@users.noreply.github.com": "AllardQuek",
+    "corazzione@users.noreply.github.com": "corazzione",
+    "entropidelic@users.noreply.github.com": "entropidelic",
+    "jinzheng8115@users.noreply.github.com": "jinzheng8115",
+    "luyao618@users.noreply.github.com": "luyao618",
+    "plgonzalezrx8@users.noreply.github.com": "plgonzalezrx8",
+    "tekgnosis-net@users.noreply.github.com": "tekgnosis-net",
+    "trevthefoolish@users.noreply.github.com": "trevthefoolish",
 }
 
 
