@@ -494,7 +494,7 @@ export interface SessionMessage {
   reasoning?: null | string
   reasoning_content?: null | string
   reasoning_details?: unknown
-  display_kind?: 'async_delegation_complete' | 'hidden' | 'model_switch' | string
+  display_kind?: 'async_delegation_complete' | 'auto_continue' | 'hidden' | 'model_switch' | string
   /**
    * A backend older than this app can still serve this as unparsed JSON text,
    * so readers must narrow before indexing into it.
@@ -523,6 +523,9 @@ export interface SessionResumeResponse {
   }
   inflight?: null | {
     assistant?: string
+    /** Mid-turn redirect corrections, oldest first. The turn's original prompt
+     *  stays in `user`; these are the follow-ups typed while it ran. */
+    corrections?: string[]
     /** Retained failed turn: the error the terminal frame carried (the frame
      *  itself may have been lost to a disconnect). */
     error?: string
